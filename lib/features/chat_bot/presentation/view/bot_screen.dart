@@ -7,7 +7,6 @@ import 'package:chat_bot/features/chat_bot/presentation/widget/empty_state.dart'
 import 'package:chat_bot/features/chat_bot/presentation/widget/input_bar.dart';
 import 'package:chat_bot/features/chat_bot/presentation/widget/typing_indicator.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 class BotScreen extends StatefulWidget {
@@ -21,19 +20,32 @@ class _BotScreenState extends State<BotScreen> {
   final TextEditingController controller = TextEditingController();
   final ScrollController scrollController = ScrollController();
 
-  bool _isUserInteracting = false;
+  List<Message> _cachedMessages = [];
 
-  void _scrollDown({bool force = false}) {
+  bool _isNearBottom() {
+    if (!scrollController.hasClients) return true;
+
+    final max = scrollController.position.maxScrollExtent;
+    final current = scrollController.position.pixels;
+
+    return (max - current) < 200;
+  }
+
+  void _scrollDown({bool force = false, bool smooth = true}) {
     if (!scrollController.hasClients) return;
 
-    if (!force && _isUserInteracting) return;
+    if (!force && !_isNearBottom()) return;
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      scrollController.animateTo(
-        scrollController.position.maxScrollExtent,
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeOut,
-      );
+      if (smooth) {
+        scrollController.animateTo(
+          scrollController.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      } else {
+        scrollController.jumpTo(scrollController.position.maxScrollExtent);
+      }
     });
   }
 
@@ -90,10 +102,11 @@ class _BotScreenState extends State<BotScreen> {
           Expanded(
             child: BlocConsumer<BotBloc, BotState>(
               listener: (context, state) {
-                if (state is BotMessageState ||
-                    state is BotStreamingState ||
-                    state is BotTypingState) {
-                  _scrollDown();
+                if (state is BotStreamingState) {
+                  _scrollDown(smooth: false);
+                } else if (state is BotTypingState ||
+                    state is BotMessageState) {
+                  _scrollDown(smooth: true);
                 }
 
                 if (state is BotErrorState) {
@@ -104,60 +117,44 @@ class _BotScreenState extends State<BotScreen> {
               },
 
               builder: (context, state) {
-                List<Message> messages = [];
-                bool isTyping = false;
+                bool isTyping =
+                    state is BotTypingState || state is BotStreamingState;
 
                 if (state is BotMessageState) {
-                  messages = state.messages;
+                  _cachedMessages = state.messages;
                 } else if (state is BotTypingState) {
-                  messages = state.messages;
-                  isTyping = true;
+                  _cachedMessages = state.messages;
                 } else if (state is BotStreamingState) {
-                  messages = state.messages;
+                  _cachedMessages = state.messages;
                 } else if (state is BotErrorState) {
-                  messages = state.messages;
+                  _cachedMessages = state.messages;
                 }
+
+                List<Message> messages = _cachedMessages;
 
                 return SafeArea(
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
                     child: Column(
                       children: [
                         Expanded(
-                          child: messages.isEmpty
+                          child: messages.isEmpty && state is! BotTypingState
                               ? EmptyState()
-                              : NotificationListener<UserScrollNotification>(
-                                  onNotification: (notification) {
-                                    if (notification.direction ==
-                                            ScrollDirection.reverse ||
-                                        notification.direction ==
-                                            ScrollDirection.forward) {
-                                      _isUserInteracting = true;
-                                    }
-
-                                    if (notification.direction ==
-                                        ScrollDirection.idle) {
-                                      _isUserInteracting = false;
-                                    }
-
-                                    return false;
-                                  },
-                                  child: ListView.builder(
-                                    controller: scrollController,
-                                    padding: const EdgeInsets.symmetric(
-                                      vertical: 10,
-                                    ),
-                                    itemCount:
-                                        messages.length + (isTyping ? 1 : 0),
-                                    itemBuilder: (context, index) {
-                                      if (index >= messages.length) {
-                                        return TypingIndicator();
-                                      }
-
-                                      final msg = messages[index];
-                                      return ChatBubble(msg: msg);
-                                    },
+                              : ListView.builder(
+                                  controller: scrollController,
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 10,
                                   ),
+                                  itemCount:
+                                      messages.length + (isTyping ? 1 : 0),
+                                  itemBuilder: (context, index) {
+                                    if (index >= messages.length) {
+                                      return TypingIndicator();
+                                    }
+
+                                    final msg = messages[index];
+                                    return ChatBubble(msg: msg);
+                                  },
                                 ),
                         ),
                       ],

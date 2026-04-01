@@ -12,7 +12,7 @@ class TypingIndicator extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         margin: const EdgeInsets.only(left: 8, right: 60, top: 4, bottom: 4),
         decoration: BoxDecoration(
-          color: Colors.grey.shade800,
+          color: Colors.black,
           borderRadius: BorderRadius.circular(16),
         ),
         child: ConstrainedBox(

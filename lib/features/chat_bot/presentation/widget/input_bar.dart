@@ -44,7 +44,7 @@ class _InputBarState extends State<InputBar> {
   void _showImageSourcePicker() {
     showModalBottomSheet(
       context: context,
-      backgroundColor: Colors.black,
+      backgroundColor: const Color.fromARGB(255, 45, 41, 41),
       builder: (_) {
         return SafeArea(
           child: Wrap(

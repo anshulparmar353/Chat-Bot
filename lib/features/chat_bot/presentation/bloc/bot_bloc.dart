@@ -39,7 +39,9 @@ class BotBloc extends Bloc<BotEvent, BotState> {
 
     try {
       if (hasInput) {
-        emit(BotTypingState(messages: []));
+        
+        emit(BotTypingState(messages: List.from(messages)));
+
         final response = await sendMessage(
           message: event.message,
           imagePath: event.imagePath,
