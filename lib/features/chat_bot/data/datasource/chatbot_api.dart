@@ -8,10 +8,10 @@ class ChatbotApi {
 
   const ChatbotApi(this.dio);
 
-  Future<String> call(String? message, String? imagePath) async {
+  Future<String> call(String? message, List<String>? imagePaths) async {
     try {
       if ((message == null || message.isEmpty) &&
-          (imagePath == null || imagePath.isEmpty)) {
+          (imagePaths == null || imagePaths.isEmpty)) {
         throw Exception("Empty request");
       }
 
@@ -21,23 +21,33 @@ class ChatbotApi {
         requestParts.add({"text": message});
       }
 
-      if (imagePath != null && imagePath.isNotEmpty) {
-        final file = File(imagePath);
+      if (imagePaths != null && imagePaths.length > 5) {
+        throw Exception("Max 5 images allowed");
+      }
 
-        final size = await file.length();
-        if (size > 5 * 1024 * 1024) {
-          throw Exception("Image too large (max 5MB)");
-        }
+      if (imagePaths != null && imagePaths.isNotEmpty) {
+        final imageParts = await Future.wait(
+          imagePaths.map((path) async {
+            final file = File(path);
 
-        final bytes = await file.readAsBytes();
-        final base64Image = base64Encode(bytes);
+            final size = await file.length();
+            if (size > 5 * 1024 * 1024) {
+              throw Exception("Image too large (max 5MB)");
+            }
 
-        requestParts.add({
-          "inline_data": {
-            "mime_type": _getMimeType(imagePath),
-            "data": base64Image,
-          },
-        });
+            final bytes = await file.readAsBytes();
+            final base64Image = base64Encode(bytes);
+
+            return {
+              "inline_data": {
+                "mime_type": _getMimeType(path),
+                "data": base64Image,
+              },
+            };
+          }),
+        );
+
+        requestParts.addAll(imageParts);
       }
 
       final response = await dio
@@ -48,18 +58,16 @@ class ChatbotApi {
                 "parts": [
                   {
                     "text":
-                        "You are a helpful AI assistant. Answer clearly in markdown."
-                  }
-                ]
+                        "You are a helpful AI assistant. Answer clearly in markdown.",
+                  },
+                ],
               },
 
               "contents": [
                 {"role": "user", "parts": requestParts},
               ],
             },
-            options: Options(
-              headers: {"Content-Type": "application/json"},
-            ),
+            options: Options(headers: {"Content-Type": "application/json"}),
           )
           .timeout(const Duration(seconds: 30));
 

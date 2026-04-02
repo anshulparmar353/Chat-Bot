@@ -7,7 +7,7 @@ class SendMessageUseCase {
 
   Future<String> call({
     required String message,
-    String? imagePath,
+    List<String>? imagePath,
   }) {
     
     if (message.trim().isEmpty && imagePath == null) {

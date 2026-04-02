@@ -7,13 +7,13 @@ abstract class BotEvent extends Equatable {
 
 class SendMessageEvent extends BotEvent {
   final String message;
-  final String? imagePath;
+  final List<String>? imagePaths;
 
   SendMessageEvent({
     required this.message,
-    this.imagePath,
+    this.imagePaths
   });
 
   @override
-  List<Object?> get props => [message, imagePath];
+  List<Object?> get props => [message, imagePaths];
 }

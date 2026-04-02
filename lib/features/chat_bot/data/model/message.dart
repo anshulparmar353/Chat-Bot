@@ -1,20 +1,15 @@
-import 'package:equatable/equatable.dart';
-
-class Message extends Equatable {
+class Message {
   final String text;
+  final List<String>? imagePaths;
   final bool isUser;
-  final String? imagePath;
 
-  const Message({required this.text, required this.isUser, this.imagePath});
+  Message({required this.text, this.imagePaths, required this.isUser});
 
-  Message copyWith({String? text, bool? isUser, String? imagePath}) {
+  Message copyWith({String? text, List<String>? imagePaths, bool? isUser}) {
     return Message(
       text: text ?? this.text,
+      imagePaths: imagePaths ?? this.imagePaths,
       isUser: isUser ?? this.isUser,
-      imagePath: imagePath ?? this.imagePath,
     );
   }
-
-  @override
-  List<Object?> get props => [text, isUser, imagePath];
 }

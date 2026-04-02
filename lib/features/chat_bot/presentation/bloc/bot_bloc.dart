@@ -17,21 +17,17 @@ class BotBloc extends Bloc<BotEvent, BotState> {
   ) async {
     List<Message> messages = [];
 
-    final hasInput = event.message.isNotEmpty || event.imagePath != null;
-
-    if (state is BotMessageState) {
-      messages = List.from((state as BotMessageState).messages);
-    } else if (state is BotTypingState) {
-      messages = List.from((state as BotTypingState).messages);
-    } else if (state is BotStreamingState) {
-      messages = List.from((state as BotStreamingState).messages);
-    } else if (state is BotErrorState) {
-      messages = List.from((state as BotErrorState).messages);
-    }
+    final hasInput =
+        event.message.isNotEmpty ||
+        (event.imagePaths != null && event.imagePaths!.isNotEmpty);
 
     if (hasInput) {
       messages.add(
-        Message(text: event.message, imagePath: event.imagePath, isUser: true),
+        Message(
+          text: event.message,
+          imagePaths: event.imagePaths,
+          isUser: true,
+        ),
       );
 
       emit(BotTypingState(messages: List.from(messages)));
@@ -39,24 +35,17 @@ class BotBloc extends Bloc<BotEvent, BotState> {
 
     try {
       if (hasInput) {
-        
-        emit(BotTypingState(messages: List.from(messages)));
-
         final response = await sendMessage(
           message: event.message,
-          imagePath: event.imagePath,
+          imagePath: event.imagePaths,
         );
 
-        if (response.isNotEmpty) {
-          messages.add(Message(text: "", isUser: false));
-        }
+        messages.add(Message(text: "", isUser: false));
 
         String currentText = "";
         DateTime lastEmitTime = DateTime.now();
 
         for (int i = 0; i < response.length; i++) {
-          await Future.delayed(const Duration(milliseconds: 5));
-
           currentText += response[i];
 
           messages[messages.length - 1] = messages.last.copyWith(
@@ -71,9 +60,7 @@ class BotBloc extends Bloc<BotEvent, BotState> {
           }
         }
 
-        if (response.isNotEmpty) {
-          emit(BotStreamingState(messages: List.from(messages)));
-        }
+        emit(BotStreamingState(messages: List.from(messages)));
       }
 
       emit(BotMessageState(messages: List.from(messages)));

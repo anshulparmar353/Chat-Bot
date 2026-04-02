@@ -9,7 +9,7 @@ class ChatbotRepoImpl implements ChatbotRepo {
   @override
   Future<String> sendMessage({
     required String message,
-    String? imagePath,
+    List<String>? imagePath,
   }) async {
     try {
       return await api.call(message, imagePath);

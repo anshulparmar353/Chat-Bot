@@ -2,7 +2,7 @@ import 'package:chat_bot/features/chat_bot/data/model/message.dart';
 import 'package:chat_bot/features/chat_bot/presentation/bloc/bot_bloc.dart';
 import 'package:chat_bot/features/chat_bot/presentation/bloc/bot_state.dart';
 import 'package:chat_bot/features/chat_bot/presentation/widget/app_drawer.dart';
-import 'package:chat_bot/features/chat_bot/presentation/widget/chat_bubble.dart';
+import 'package:chat_bot/features/chat_bot/presentation/widget/user_message.dart';
 import 'package:chat_bot/features/chat_bot/presentation/widget/empty_state.dart';
 import 'package:chat_bot/features/chat_bot/presentation/widget/input_bar.dart';
 import 'package:chat_bot/features/chat_bot/presentation/widget/typing_indicator.dart';
@@ -153,7 +153,7 @@ class _BotScreenState extends State<BotScreen> {
                                     }
 
                                     final msg = messages[index];
-                                    return ChatBubble(msg: msg);
+                                    return UserMessage(msg: msg);
                                   },
                                 ),
                         ),
