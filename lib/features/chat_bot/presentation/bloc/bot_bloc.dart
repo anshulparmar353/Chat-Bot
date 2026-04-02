@@ -1,3 +1,4 @@
+import 'package:chat_bot/core/handler/api_error_handler.dart';
 import 'package:chat_bot/features/chat_bot/data/model/message.dart';
 import 'package:chat_bot/features/chat_bot/domain/usecases/chatbot_usecases.dart';
 import 'package:chat_bot/features/chat_bot/presentation/bloc/bot_event.dart';
@@ -7,6 +8,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 class BotBloc extends Bloc<BotEvent, BotState> {
   final SendMessageUseCase sendMessage;
 
+  List<Message> messages = [];
+
   BotBloc(this.sendMessage) : super(BotInitialState()) {
     on<SendMessageEvent>(_onMessageSend);
   }
@@ -15,8 +18,6 @@ class BotBloc extends Bloc<BotEvent, BotState> {
     SendMessageEvent event,
     Emitter<BotState> emit,
   ) async {
-    List<Message> messages = [];
-
     final hasInput =
         event.message.isNotEmpty ||
         (event.imagePaths != null && event.imagePaths!.isNotEmpty);
@@ -54,7 +55,7 @@ class BotBloc extends Bloc<BotEvent, BotState> {
 
           final now = DateTime.now();
 
-          if (now.difference(lastEmitTime).inMilliseconds > 50) {
+          if (now.difference(lastEmitTime).inMilliseconds > 100) {
             emit(BotStreamingState(messages: List.from(messages)));
             lastEmitTime = now;
           }
@@ -65,7 +66,11 @@ class BotBloc extends Bloc<BotEvent, BotState> {
 
       emit(BotMessageState(messages: List.from(messages)));
     } catch (e) {
-      emit(BotErrorState(messages: List.from(messages), error: e.toString()));
+      final errorMessage = ApiErrorHandler.getMessage(e);
+
+      messages.add(Message(text: errorMessage, isUser: false));
+
+      emit(BotMessageState(messages: List.from(messages)));
     }
   }
 }

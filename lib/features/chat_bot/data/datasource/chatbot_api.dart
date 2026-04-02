@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:chat_bot/core/handler/api_error_handler.dart';
 import 'package:chat_bot/core/network/api_endpoints.dart';
 import 'package:dio/dio.dart';
 
@@ -94,7 +95,7 @@ class ChatbotApi {
     } on DioException catch (e) {
       throw Exception("API Error: ${e.response?.data ?? e.message}");
     } catch (e) {
-      throw Exception("Unexpected Error: $e");
+      return ApiErrorHandler.getMessage(e);
     }
   }
 
