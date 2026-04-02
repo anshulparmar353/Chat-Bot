@@ -7,16 +7,16 @@ class SendMessageUseCase {
 
   Future<String> call({
     required String message,
-    List<String>? imagePath,
+    List<String>? imagePaths,
   }) {
     
-    if (message.trim().isEmpty && imagePath == null) {
+    if (message.trim().isEmpty && imagePaths == null) {
       throw Exception("Message or image required");
     }
 
     return repo.sendMessage(
       message: message,
-      imagePath: imagePath,
+      imagePath: imagePaths,
     );
   }
 }

@@ -22,29 +22,24 @@ class _BotScreenState extends State<BotScreen> {
 
   List<Message> _cachedMessages = [];
 
-  bool _isNearBottom() {
-    if (!scrollController.hasClients) return true;
+  bool _autoScrollEnabled = true;
 
-    final max = scrollController.position.maxScrollExtent;
-    final current = scrollController.position.pixels;
-
-    return (max - current) < 200;
-  }
-
-  void _scrollDown({bool force = false, bool smooth = true}) {
+  void _scrollDown({bool smooth = true}) {
     if (!scrollController.hasClients) return;
 
-    if (!force && !_isNearBottom()) return;
+    if (!_autoScrollEnabled) return; // 🔥 KEY LINE
+
+    final max = scrollController.position.maxScrollExtent;
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (smooth) {
         scrollController.animateTo(
-          scrollController.position.maxScrollExtent,
-          duration: const Duration(milliseconds: 300),
+          max,
+          duration: const Duration(milliseconds: 250),
           curve: Curves.easeOut,
         );
       } else {
-        scrollController.jumpTo(scrollController.position.maxScrollExtent);
+        scrollController.jumpTo(max);
       }
     });
   }
@@ -102,8 +97,9 @@ class _BotScreenState extends State<BotScreen> {
           Expanded(
             child: BlocConsumer<BotBloc, BotState>(
               listener: (context, state) {
+                
                 if (state is BotStreamingState) {
-                  _scrollDown(smooth: false);
+                  _scrollDown(smooth: true);
                 } else if (state is BotTypingState ||
                     state is BotMessageState) {
                   _scrollDown(smooth: true);
@@ -140,21 +136,42 @@ class _BotScreenState extends State<BotScreen> {
                         Expanded(
                           child: messages.isEmpty && state is! BotTypingState
                               ? EmptyState()
-                              : ListView.builder(
-                                  controller: scrollController,
-                                  padding: const EdgeInsets.symmetric(
-                                    vertical: 10,
-                                  ),
-                                  itemCount:
-                                      messages.length + (isTyping ? 1 : 0),
-                                  itemBuilder: (context, index) {
-                                    if (index >= messages.length) {
-                                      return TypingIndicator();
+                              : NotificationListener<ScrollNotification>(
+                                  onNotification: (notification) {
+                                    if (!scrollController.hasClients) {
+                                      return false;
                                     }
 
-                                    final msg = messages[index];
-                                    return UserMessage(msg: msg);
+                                    final position = scrollController.position;
+                                    final max = position.maxScrollExtent;
+                                    final current = position.pixels;
+
+                                    final distance = max - current;
+
+                                    if (distance > 100) {
+                                      _autoScrollEnabled = false;
+                                    } else {
+                                      _autoScrollEnabled = true;
+                                    }
+
+                                    return false;
                                   },
+                                  child: ListView.builder(
+                                    controller: scrollController,
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 10,
+                                    ),
+                                    itemCount:
+                                        messages.length + (isTyping ? 1 : 0),
+                                    itemBuilder: (context, index) {
+                                      if (index >= messages.length) {
+                                        return TypingIndicator();
+                                      }
+
+                                      final msg = messages[index];
+                                      return UserMessage(msg: msg);
+                                    },
+                                  ),
                                 ),
                         ),
                       ],

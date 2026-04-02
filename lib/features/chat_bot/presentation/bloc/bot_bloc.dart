@@ -22,53 +22,48 @@ class BotBloc extends Bloc<BotEvent, BotState> {
         event.message.isNotEmpty ||
         (event.imagePaths != null && event.imagePaths!.isNotEmpty);
 
-    if (hasInput) {
-      messages.add(
-        Message(
-          text: event.message,
-          imagePaths: event.imagePaths,
-          isUser: true,
-        ),
-      );
+    if (!hasInput) return;
 
-      emit(BotTypingState(messages: List.from(messages)));
-    }
+    messages.add(
+      Message(text: event.message, imagePaths: event.imagePaths, isUser: true),
+    );
+
+    emit(BotTypingState(messages: List.from(messages)));
 
     try {
-      if (hasInput) {
-        final response = await sendMessage(
-          message: event.message,
-          imagePath: event.imagePaths,
+      final response = await sendMessage(
+        message: event.message,
+        imagePaths: event.imagePaths,
+      );
+
+      messages.add(Message(text: "", isUser: false));
+
+      final words = response.split(" ");
+      String currentText = "";
+
+      for (int i = 0; i < words.length; i++) {
+        currentText += "${words[i]} ";
+
+        messages[messages.length - 1] = messages.last.copyWith(
+          text: currentText,
         );
 
-        messages.add(Message(text: "", isUser: false));
-
-        String currentText = "";
-        DateTime lastEmitTime = DateTime.now();
-
-        for (int i = 0; i < response.length; i++) {
-          currentText += response[i];
-
-          messages[messages.length - 1] = messages.last.copyWith(
-            text: currentText,
-          );
-
-          final now = DateTime.now();
-
-          if (now.difference(lastEmitTime).inMilliseconds > 100) {
-            emit(BotStreamingState(messages: List.from(messages)));
-            lastEmitTime = now;
-          }
-        }
-
         emit(BotStreamingState(messages: List.from(messages)));
+
+        await Future.delayed(const Duration(milliseconds: 50));
       }
 
       emit(BotMessageState(messages: List.from(messages)));
     } catch (e) {
       final errorMessage = ApiErrorHandler.getMessage(e);
 
-      messages.add(Message(text: errorMessage, isUser: false));
+      if (messages.isNotEmpty && !messages.last.isUser) {
+        messages[messages.length - 1] = messages.last.copyWith(
+          text: errorMessage,
+        );
+      } else {
+        messages.add(Message(text: errorMessage, isUser: false));
+      }
 
       emit(BotMessageState(messages: List.from(messages)));
     }
