@@ -18,36 +18,12 @@ class BotScreen extends StatefulWidget {
 
 class _BotScreenState extends State<BotScreen> {
   final TextEditingController controller = TextEditingController();
-  final ScrollController scrollController = ScrollController();
 
   List<Message> _cachedMessages = [];
-
-  bool _autoScrollEnabled = true;
-
-  void _scrollDown({bool smooth = true}) {
-    if (!scrollController.hasClients) return;
-
-    if (!_autoScrollEnabled) return; // 🔥 KEY LINE
-
-    final max = scrollController.position.maxScrollExtent;
-
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (smooth) {
-        scrollController.animateTo(
-          max,
-          duration: const Duration(milliseconds: 250),
-          curve: Curves.easeOut,
-        );
-      } else {
-        scrollController.jumpTo(max);
-      }
-    });
-  }
 
   @override
   void dispose() {
     controller.dispose();
-    scrollController.dispose();
     super.dispose();
   }
 
@@ -55,7 +31,6 @@ class _BotScreenState extends State<BotScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.black,
-
       drawer: const AppDrawer(),
 
       appBar: AppBar(
@@ -97,14 +72,6 @@ class _BotScreenState extends State<BotScreen> {
           Expanded(
             child: BlocConsumer<BotBloc, BotState>(
               listener: (context, state) {
-                
-                if (state is BotStreamingState) {
-                  _scrollDown(smooth: true);
-                } else if (state is BotTypingState ||
-                    state is BotMessageState) {
-                  _scrollDown(smooth: true);
-                }
-
                 if (state is BotErrorState) {
                   ScaffoldMessenger.of(
                     context,
@@ -113,7 +80,7 @@ class _BotScreenState extends State<BotScreen> {
               },
 
               builder: (context, state) {
-                bool isTyping =
+                final bool isTyping =
                     state is BotTypingState || state is BotStreamingState;
 
                 if (state is BotMessageState) {
@@ -125,8 +92,7 @@ class _BotScreenState extends State<BotScreen> {
                 } else if (state is BotErrorState) {
                   _cachedMessages = state.messages;
                 }
-
-                List<Message> messages = _cachedMessages;
+                final messages = _cachedMessages;
 
                 return SafeArea(
                   child: Padding(
@@ -134,44 +100,23 @@ class _BotScreenState extends State<BotScreen> {
                     child: Column(
                       children: [
                         Expanded(
-                          child: messages.isEmpty && state is! BotTypingState
+                          child: messages.isEmpty && !isTyping
                               ? EmptyState()
-                              : NotificationListener<ScrollNotification>(
-                                  onNotification: (notification) {
-                                    if (!scrollController.hasClients) {
-                                      return false;
-                                    }
-
-                                    final position = scrollController.position;
-                                    final max = position.maxScrollExtent;
-                                    final current = position.pixels;
-
-                                    final distance = max - current;
-
-                                    if (distance > 100) {
-                                      _autoScrollEnabled = false;
-                                    } else {
-                                      _autoScrollEnabled = true;
-                                    }
-
-                                    return false;
-                                  },
-                                  child: ListView.builder(
-                                    controller: scrollController,
-                                    padding: const EdgeInsets.symmetric(
-                                      vertical: 10,
-                                    ),
-                                    itemCount:
-                                        messages.length + (isTyping ? 1 : 0),
-                                    itemBuilder: (context, index) {
-                                      if (index >= messages.length) {
-                                        return TypingIndicator();
-                                      }
-
-                                      final msg = messages[index];
-                                      return UserMessage(msg: msg);
-                                    },
+                              : ListView.builder(
+                                  // ✅ SCROLL ENABLED (DEFAULT)
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 10,
                                   ),
+                                  itemCount:
+                                      messages.length + (isTyping ? 1 : 0),
+                                  itemBuilder: (context, index) {
+                                    if (index >= messages.length) {
+                                      return const TypingIndicator();
+                                    }
+
+                                    final msg = messages[index];
+                                    return UserMessage(msg: msg);
+                                  },
                                 ),
                         ),
                       ],
@@ -182,7 +127,7 @@ class _BotScreenState extends State<BotScreen> {
             ),
           ),
 
-          InputBar(),
+          const InputBar(),
         ],
       ),
     );

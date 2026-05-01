@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:chat_bot/features/chat_bot/data/model/message.dart';
 import 'package:chat_bot/features/chat_bot/presentation/widget/bot_message.dart';
 import 'package:flutter/material.dart';
+import 'package:gpt_markdown/gpt_markdown.dart';
 
 class UserMessage extends StatelessWidget {
   const UserMessage({super.key, required this.msg});
@@ -27,6 +28,7 @@ class UserMessage extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
+
               if (msg.imagePaths != null && msg.imagePaths!.isNotEmpty)
                 Wrap(
                   spacing: 6,
@@ -36,8 +38,8 @@ class UserMessage extends StatelessWidget {
                       borderRadius: BorderRadius.circular(10),
                       child: Image.file(
                         File(path),
-                        width: 20,
-                        height: 20,
+                        width: 60, 
+                        height: 60,
                         fit: BoxFit.cover,
                       ),
                     );
@@ -50,7 +52,10 @@ class UserMessage extends StatelessWidget {
                 const SizedBox(height: 8),
 
               if (msg.text.isNotEmpty)
-                Text(msg.text, style: const TextStyle(color: Colors.white)),
+                GptMarkdown(
+                  msg.text,
+                  style: const TextStyle(color: Colors.white),
+                ),
             ],
           ),
         ),

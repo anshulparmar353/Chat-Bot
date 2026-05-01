@@ -21,32 +21,49 @@ class BotMessage extends StatelessWidget {
           ),
         );
       },
+
       child: Container(
         width: double.infinity,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         color: Colors.black,
-        child: DefaultTextStyle(
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 15,
-            height: 1.5,
-          ),
-          textAlign: TextAlign.justify,
-          child: Theme(
-            data: Theme.of(context).copyWith(
-              textTheme: const TextTheme(
-                bodyMedium: TextStyle(color: Colors.white),
-                bodyLarge: TextStyle(color: Colors.white),
-              ),
-            ),
-            child: GptMarkdown(
-              msg.text,
-              style: const TextStyle(
+
+        child: Theme(
+          data: Theme.of(context).copyWith(
+            textTheme: const TextTheme(
+
+              headlineMedium: TextStyle(
                 color: Colors.white,
-                fontSize: 15,
-                height: 1.5,
+                fontSize: 22, 
+                fontWeight: FontWeight.bold,
+                height: 1.4,
+              ),
+
+              headlineSmall: TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+                height: 1.4,
+              ),
+
+              bodyLarge: TextStyle(
+                color: Colors.white,
+                fontSize: 14, 
+                height: 1.6,
+              ),
+              bodyMedium: TextStyle(
+                color: Colors.white,
+                fontSize: 14,
+                height: 1.6,
               ),
             ),
+          ),
+
+          child: GptMarkdown(
+            msg.text,
+
+            style: const TextStyle(color: Colors.white),
+
+            textAlign: TextAlign.start,
           ),
         ),
       ),
