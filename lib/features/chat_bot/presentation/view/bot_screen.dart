@@ -1,5 +1,6 @@
 import 'package:chat_bot/features/chat_bot/data/model/message.dart';
 import 'package:chat_bot/features/chat_bot/presentation/bloc/bot_bloc.dart';
+import 'package:chat_bot/features/chat_bot/presentation/bloc/bot_event.dart';
 import 'package:chat_bot/features/chat_bot/presentation/bloc/bot_state.dart';
 import 'package:chat_bot/features/chat_bot/presentation/widget/app_drawer.dart';
 import 'package:chat_bot/features/chat_bot/presentation/widget/user_message.dart';
@@ -18,12 +19,14 @@ class BotScreen extends StatefulWidget {
 
 class _BotScreenState extends State<BotScreen> {
   final TextEditingController controller = TextEditingController();
+  final FocusNode focusNode = FocusNode();
 
   List<Message> _cachedMessages = [];
 
   @override
   void dispose() {
     controller.dispose();
+    focusNode.dispose();
     super.dispose();
   }
 
@@ -101,9 +104,17 @@ class _BotScreenState extends State<BotScreen> {
                       children: [
                         Expanded(
                           child: messages.isEmpty && !isTyping
-                              ? EmptyState()
+                              ? EmptyState(
+                                  onExampleTap: (text) {
+                                    controller.text = text;
+                                    focusNode.requestFocus();
+
+                                    context.read<BotBloc>().add(
+                                      SendMessageEvent(message: text),
+                                    );
+                                  },
+                                )
                               : ListView.builder(
-                                  // ✅ SCROLL ENABLED (DEFAULT)
                                   padding: const EdgeInsets.symmetric(
                                     vertical: 10,
                                   ),
@@ -127,7 +138,7 @@ class _BotScreenState extends State<BotScreen> {
             ),
           ),
 
-          const InputBar(),
+          InputBar(controller: controller, focusNode: focusNode),
         ],
       ),
     );

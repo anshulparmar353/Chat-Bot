@@ -8,14 +8,21 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:image_picker/image_picker.dart';
 
 class InputBar extends StatefulWidget {
-  const InputBar({super.key});
+  final TextEditingController controller;
+  final FocusNode focusNode;
+
+  const InputBar({
+    super.key,
+    required this.controller,
+    required this.focusNode,
+  });
 
   @override
   State<InputBar> createState() => _InputBarState();
 }
 
 class _InputBarState extends State<InputBar> {
-  final TextEditingController controller = TextEditingController();
+
   final ScrollController scrollController = ScrollController();
 
   List<String> selectedImages = [];
@@ -100,7 +107,7 @@ class _InputBarState extends State<InputBar> {
   }
 
   void _send() {
-    final text = controller.text.trim();
+    final text = widget.controller.text.trim();
 
     if (text.isEmpty && selectedImages.isEmpty) return;
 
@@ -108,7 +115,7 @@ class _InputBarState extends State<InputBar> {
       SendMessageEvent(message: text, imagePaths: List.from(selectedImages)),
     );
 
-    controller.clear();
+    widget.controller.clear();
 
     setState(() {
       selectedImages.clear();
@@ -137,7 +144,7 @@ class _InputBarState extends State<InputBar> {
 
   @override
   void dispose() {
-    controller.dispose();
+    widget.controller.dispose();
     scrollController.dispose();
     super.dispose();
   }
@@ -145,7 +152,7 @@ class _InputBarState extends State<InputBar> {
   @override
   Widget build(BuildContext context) {
     final hasInput =
-        controller.text.trim().isNotEmpty || selectedImages.isNotEmpty;
+        widget.controller.text.trim().isNotEmpty || selectedImages.isNotEmpty;
 
     return Container(
       color: Colors.black,
@@ -223,7 +230,8 @@ class _InputBarState extends State<InputBar> {
 
               Expanded(
                 child: TextField(
-                  controller: controller,
+                  controller: widget.controller,
+                  focusNode: widget.focusNode,
                   onChanged: (_) => setState(() {}),
                   minLines: 1,
                   maxLines: 4,
