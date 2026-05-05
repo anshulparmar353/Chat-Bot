@@ -26,17 +26,13 @@ class EmptyState extends StatelessWidget {
             ),
             textAlign: TextAlign.center,
           ),
-
           const SizedBox(height: 12),
-
           const Text(
             "Ask anything. Get instant answers, ideas, or help.",
             style: TextStyle(color: Colors.white70, fontSize: 14),
             textAlign: TextAlign.center,
           ),
-
           const SizedBox(height: 30),
-
           ...examples.map((e) => _buildExample(e)),
         ],
       ),

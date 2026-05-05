@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "129232862772",
+    "project_id": "chat-bot-bba68",
+    "storage_bucket": "chat-bot-bba68.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:129232862772:android:f1e3385ff5970dd5621461",
+        "android_client_info": {
+          "package_name": "com.example.chat_bot"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "129232862772-athfde3out4dsgbj829s8tokh1it04o4.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBp_A4vSIb_d1RIbLXaje_XFD29UxSTVaM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "129232862772-athfde3out4dsgbj829s8tokh1it04o4.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

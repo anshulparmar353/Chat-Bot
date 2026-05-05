@@ -1,7 +1,6 @@
 import 'dart:io';
 
 import 'package:chat_bot/features/chat_bot/presentation/bloc/bot_bloc.dart';
-import 'package:chat_bot/features/chat_bot/presentation/bloc/bot_event.dart';
 import 'package:chat_bot/features/chat_bot/presentation/bloc/bot_state.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -10,11 +9,13 @@ import 'package:image_picker/image_picker.dart';
 class InputBar extends StatefulWidget {
   final TextEditingController controller;
   final FocusNode focusNode;
+  final Function(String text, List<String> images) onSend;
 
   const InputBar({
     super.key,
     required this.controller,
     required this.focusNode,
+    required this.onSend,
   });
 
   @override
@@ -22,7 +23,6 @@ class InputBar extends StatefulWidget {
 }
 
 class _InputBarState extends State<InputBar> {
-
   final ScrollController scrollController = ScrollController();
 
   List<String> selectedImages = [];
@@ -111,9 +111,7 @@ class _InputBarState extends State<InputBar> {
 
     if (text.isEmpty && selectedImages.isEmpty) return;
 
-    context.read<BotBloc>().add(
-      SendMessageEvent(message: text, imagePaths: List.from(selectedImages)),
-    );
+    widget.onSend(text, List.from(selectedImages));
 
     widget.controller.clear();
 
@@ -144,7 +142,6 @@ class _InputBarState extends State<InputBar> {
 
   @override
   void dispose() {
-    widget.controller.dispose();
     scrollController.dispose();
     super.dispose();
   }
@@ -259,8 +256,7 @@ class _InputBarState extends State<InputBar> {
 
               BlocBuilder<BotBloc, BotState>(
                 builder: (context, state) {
-                  final isBusy =
-                      state is BotTypingState || state is BotStreamingState;
+                  final isBusy = state.isTyping;
 
                   return AnimatedContainer(
                     duration: const Duration(milliseconds: 150),

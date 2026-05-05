@@ -1,71 +1,289 @@
+import 'dart:math';
+
 import 'package:chat_bot/core/handler/api_error_handler.dart';
-import 'package:chat_bot/features/chat_bot/data/model/message.dart';
-import 'package:chat_bot/features/chat_bot/domain/usecases/chatbot_usecases.dart';
-import 'package:chat_bot/features/chat_bot/presentation/bloc/bot_event.dart';
-import 'package:chat_bot/features/chat_bot/presentation/bloc/bot_state.dart';
+import 'package:chat_bot/features/chat_bot/domain/repository/chat_repository.dart';
+import 'package:chat_bot/features/chat_bot/domain/repository/chatbot_repo.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:uuid/uuid.dart';
+
+import '../../domain/entities/message.dart';
+import 'bot_event.dart';
+import 'bot_state.dart';
 
 class BotBloc extends Bloc<BotEvent, BotState> {
-  final SendMessageUseCase sendMessage;
+  final ChatRepository chatRepository;
+  final ChatbotRepo chatbotRepo;
 
-  List<Message> messages = [];
+  final String userId;
 
-  BotBloc(this.sendMessage) : super(BotInitialState()) {
-    on<SendMessageEvent>(_onMessageSend);
+  BotBloc({
+    required this.chatRepository,
+    required this.chatbotRepo,
+    required this.userId,
+  }) : super(const BotState()) {
+    on<LoadMessagesEvent>(_loadMessages);
+    on<SendMessageEvent>(_sendMessage);
+    on<CreateConversationEvent>(_createConversation);
+    on<SelectConversationEvent>(_selectConversation);
+    on<LoadConversationsEvent>(_loadConversations);
   }
 
-  Future<void> _onMessageSend(
+  final _random = Random();
+
+  // ---------------- LOAD MESSAGES ----------------
+
+  Future<void> _loadMessages(
+    LoadMessagesEvent event,
+    Emitter<BotState> emit,
+  ) async {
+    emit(state.copyWith(isLoading: true));
+
+    try {
+      final messages = await chatRepository.getMessages(
+        userId: event.userId,
+        conversationId: event.conversationId,
+      );
+
+      emit(
+        state.copyWith(
+          messages: messages,
+          conversationId: event.conversationId,
+          isLoading: false,
+        ),
+      );
+    } catch (e) {
+      final errorText = ApiErrorHandler.getMessage(e);
+
+      final errorMessage = Message(
+        id: const Uuid().v4(),
+        text: "⚠️ $errorText",
+        isUser: false,
+        createdAt: DateTime.now(),
+      );
+
+      emit(
+        state.copyWith(
+          messages: [...state.messages, errorMessage],
+          isLoading: false,
+        ),
+      );
+    }
+  }
+
+  // ---------------- CREATE CONVERSATION ----------------
+
+  Future<void> _createConversation(
+    CreateConversationEvent event,
+    Emitter<BotState> emit,
+  ) async {
+    try {
+      final title = event.firstMessage.trim().isEmpty
+          ? "New Chat"
+          : _generateTitle(event.firstMessage);
+
+      final conversationId = await chatRepository.createConversation(
+        userId: event.userId,
+        title: title,
+      );
+
+      final conversations = await chatRepository.getConversations(event.userId);
+
+      emit(
+        state.copyWith(
+          conversationId: conversationId,
+          messages: [],
+          conversations: conversations,
+        ),
+      );
+
+      if (event.firstMessage.trim().isNotEmpty) {
+        add(
+          SendMessageEvent(
+            userId: event.userId,
+            conversationId: conversationId,
+            text: event.firstMessage,
+          ),
+        );
+      }
+    } catch (e) {
+      final errorText = ApiErrorHandler.getMessage(e);
+
+      final errorMessage = Message(
+        id: const Uuid().v4(),
+        text: "⚠️ $errorText",
+        isUser: false,
+        createdAt: DateTime.now(),
+      );
+
+      emit(state.copyWith(messages: [...state.messages, errorMessage]));
+    }
+  }
+
+  // ---------------- SEND MESSAGE ----------------
+
+  Future<void> _sendMessage(
     SendMessageEvent event,
     Emitter<BotState> emit,
   ) async {
-    final hasInput =
-        event.message.isNotEmpty ||
-        (event.imagePaths != null && event.imagePaths!.isNotEmpty);
+    final now = DateTime.now();
 
-    if (!hasInput) return;
+    final isFirstMessage = state.messages.isEmpty;
 
-    messages.add(
-      Message(text: event.message, imagePaths: event.imagePaths, isUser: true),
+    final userMessage = Message(
+      id: const Uuid().v4(),
+      text: event.text,
+      isUser: true,
+      createdAt: now,
     );
 
-    emit(BotTypingState(messages: List.from(messages)));
+    final updatedMessages = [...state.messages, userMessage];
+
+    emit(state.copyWith(messages: updatedMessages, isTyping: true));
 
     try {
-      final response = await sendMessage(
-        message: event.message,
-        imagePaths: event.imagePaths,
+      // 🔹 Save user message
+      await chatRepository.sendMessage(
+        userId: event.userId,
+        conversationId: event.conversationId,
+        message: userMessage,
       );
 
-      messages.add(Message(text: "", isUser: false));
+      // 🔥 Update title (first message only)
+      if (isFirstMessage) {
+        final newTitle = _generateTitle(event.text);
 
-      final words = response.split(" ");
-      String currentText = "";
-
-      for (int i = 0; i < words.length; i++) {
-        currentText += "${words[i]} ";
-
-        messages[messages.length - 1] = messages.last.copyWith(
-          text: currentText,
+        await chatRepository.updateConversationTitle(
+          userId: event.userId,
+          conversationId: event.conversationId,
+          title: newTitle,
         );
 
-        emit(BotStreamingState(messages: List.from(messages)));
+        final conversations = await chatRepository.getConversations(
+          event.userId,
+        );
 
-        await Future.delayed(const Duration(milliseconds: 50));
+        emit(state.copyWith(conversations: conversations));
       }
 
-      emit(BotMessageState(messages: List.from(messages)));
+      // 🔹 Send history to API
+      final history = [...state.messages, userMessage];
+
+      final response = await chatbotRepo.sendMessage(history: history);
+
+      // 🔹 Create empty bot message
+      Message botMessage = Message(
+        id: const Uuid().v4(),
+        text: "",
+        isUser: false,
+        createdAt: DateTime.now(),
+      );
+
+      final tempList = [...updatedMessages, botMessage];
+
+      emit(state.copyWith(messages: tempList));
+
+      // 🔥 ChatGPT-like typing
+      String current = "";
+
+      for (int i = 0; i < response.length; i++) {
+        final char = response[i];
+        current += char;
+
+        botMessage = botMessage.copyWith(text: current);
+        tempList[tempList.length - 1] = botMessage;
+
+        emit(state.copyWith(messages: List.from(tempList)));
+
+        await Future.delayed(_typingDelay(char));
+      }
+
+      // 🔹 Save bot message
+      await chatRepository.sendMessage(
+        userId: event.userId,
+        conversationId: event.conversationId,
+        message: botMessage,
+      );
+
+      emit(state.copyWith(messages: tempList, isTyping: false));
     } catch (e) {
-      final errorMessage = ApiErrorHandler.getMessage(e);
+      final errorText = ApiErrorHandler.getMessage(e);
 
-      if (messages.isNotEmpty && !messages.last.isUser) {
-        messages[messages.length - 1] = messages.last.copyWith(
-          text: errorMessage,
-        );
-      } else {
-        messages.add(Message(text: errorMessage, isUser: false));
-      }
+      final errorMessage = Message(
+        id: const Uuid().v4(),
+        text: "⚠️ $errorText\n\nPlease try again.",
+        isUser: false,
+        createdAt: DateTime.now(),
+      );
 
-      emit(BotMessageState(messages: List.from(messages)));
+      final updated = [...state.messages, errorMessage];
+
+      // 🔥 Save error message (optional but good)
+      await chatRepository.sendMessage(
+        userId: event.userId,
+        conversationId: event.conversationId,
+        message: errorMessage,
+      );
+
+      emit(state.copyWith(messages: updated, isTyping: false));
     }
+  }
+
+  // ---------------- SELECT CONVERSATION ----------------
+
+  Future<void> _selectConversation(
+    SelectConversationEvent event,
+    Emitter<BotState> emit,
+  ) async {
+    emit(state.copyWith(messages: []));
+
+    add(
+      LoadMessagesEvent(userId: userId, conversationId: event.conversationId),
+    );
+  }
+
+  // ---------------- LOAD CONVERSATIONS ----------------
+
+  Future<void> _loadConversations(
+    LoadConversationsEvent event,
+    Emitter<BotState> emit,
+  ) async {
+    try {
+      final conversations = await chatRepository.getConversations(event.userId);
+
+      emit(state.copyWith(conversations: conversations));
+    } catch (e) {
+      final errorText = ApiErrorHandler.getMessage(e);
+
+      final errorMessage = Message(
+        id: const Uuid().v4(),
+        text: "⚠️ $errorText",
+        isUser: false,
+        createdAt: DateTime.now(),
+      );
+
+      emit(state.copyWith(messages: [...state.messages, errorMessage]));
+    }
+  }
+
+  // ---------------- HELPERS ----------------
+
+  Duration _typingDelay(String char) {
+    int base;
+
+    if (char == ' ') {
+      base = 8;
+    } else if ('.!?'.contains(char)) {
+      base = 90;
+    } else if (char == '\n') {
+      base = 120;
+    } else {
+      base = 18;
+    }
+
+    return Duration(milliseconds: base + _random.nextInt(10));
+  }
+
+  String _generateTitle(String text) {
+    return text.replaceAll("\n", " ").trim().split(" ").take(5).join(" ");
   }
 }

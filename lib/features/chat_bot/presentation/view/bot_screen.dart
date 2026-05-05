@@ -1,4 +1,3 @@
-import 'package:chat_bot/features/chat_bot/data/model/message.dart';
 import 'package:chat_bot/features/chat_bot/presentation/bloc/bot_bloc.dart';
 import 'package:chat_bot/features/chat_bot/presentation/bloc/bot_event.dart';
 import 'package:chat_bot/features/chat_bot/presentation/bloc/bot_state.dart';
@@ -11,7 +10,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 class BotScreen extends StatefulWidget {
-  const BotScreen({super.key});
+  const BotScreen({super.key, required this.userId});
+
+  final String userId;
 
   @override
   State<BotScreen> createState() => _BotScreenState();
@@ -19,9 +20,15 @@ class BotScreen extends StatefulWidget {
 
 class _BotScreenState extends State<BotScreen> {
   final TextEditingController controller = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
   final FocusNode focusNode = FocusNode();
 
-  List<Message> _cachedMessages = [];
+  @override
+  void initState() {
+    super.initState();
+
+    context.read<BotBloc>().add(LoadConversationsEvent(widget.userId));
+  }
 
   @override
   void dispose() {
@@ -30,72 +37,59 @@ class _BotScreenState extends State<BotScreen> {
     super.dispose();
   }
 
+  void _sendMessage(BuildContext context, String text, List<String> images) {
+    final bloc = context.read<BotBloc>();
+    final state = bloc.state;
+
+    if (state.conversationId == null) {
+      bloc.add(
+        CreateConversationEvent(userId: widget.userId, firstMessage: text),
+      );
+    } else {
+      bloc.add(
+        SendMessageEvent(
+          userId: widget.userId,
+          conversationId: state.conversationId!,
+          text: text,
+        ),
+      );
+    }
+    controller.clear();
+    focusNode.requestFocus();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.black,
-      drawer: const AppDrawer(),
+
+      drawer: AppDrawer(userId: widget.userId),
 
       appBar: AppBar(
         backgroundColor: Colors.black,
         elevation: 0,
         centerTitle: true,
         title: const Text("ChatBot", style: TextStyle(color: Colors.white)),
-        leading: Builder(
-          builder: (context) {
-            return Padding(
-              padding: const EdgeInsets.all(8),
-              child: InkWell(
-                onTap: () => Scaffold.of(context).openDrawer(),
-                borderRadius: BorderRadius.circular(12),
-                child: Container(
-                  width: 36,
-                  height: 36,
-                  decoration: BoxDecoration(
-                    color: Colors.white10,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white24, width: 1),
-                  ),
-                  child: const Center(
-                    child: Icon(
-                      Icons.short_text_rounded,
-                      color: Colors.white,
-                      size: 26,
-                    ),
-                  ),
-                ),
-              ),
-            );
-          },
-        ),
+        iconTheme: const IconThemeData(color: Colors.white),
       ),
 
       body: Column(
         children: [
           Expanded(
-            child: BlocConsumer<BotBloc, BotState>(
-              listener: (context, state) {
-                if (state is BotErrorState) {
-                  ScaffoldMessenger.of(
-                    context,
-                  ).showSnackBar(SnackBar(content: Text(state.error)));
-                }
-              },
-
+            child: BlocBuilder<BotBloc, BotState>(
               builder: (context, state) {
-                final bool isTyping =
-                    state is BotTypingState || state is BotStreamingState;
+                final messages = state.messages;
+                final isTyping = state.isTyping;
 
-                if (state is BotMessageState) {
-                  _cachedMessages = state.messages;
-                } else if (state is BotTypingState) {
-                  _cachedMessages = state.messages;
-                } else if (state is BotStreamingState) {
-                  _cachedMessages = state.messages;
-                } else if (state is BotErrorState) {
-                  _cachedMessages = state.messages;
-                }
-                final messages = _cachedMessages;
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  if (_scrollController.hasClients) {
+                    _scrollController.animateTo(
+                      _scrollController.position.maxScrollExtent,
+                      duration: const Duration(milliseconds: 300),
+                      curve: Curves.easeOut,
+                    );
+                  }
+                });
 
                 return SafeArea(
                   child: Padding(
@@ -106,15 +100,11 @@ class _BotScreenState extends State<BotScreen> {
                           child: messages.isEmpty && !isTyping
                               ? EmptyState(
                                   onExampleTap: (text) {
-                                    controller.text = text;
-                                    focusNode.requestFocus();
-
-                                    context.read<BotBloc>().add(
-                                      SendMessageEvent(message: text),
-                                    );
+                                    _sendMessage(context, text, []);
                                   },
                                 )
                               : ListView.builder(
+                                  controller: _scrollController,
                                   padding: const EdgeInsets.symmetric(
                                     vertical: 10,
                                   ),
@@ -138,7 +128,11 @@ class _BotScreenState extends State<BotScreen> {
             ),
           ),
 
-          InputBar(controller: controller, focusNode: focusNode),
+          InputBar(
+            controller: controller,
+            focusNode: focusNode,
+            onSend: (text, images) => _sendMessage(context, text, images),
+          ),
         ],
       ),
     );

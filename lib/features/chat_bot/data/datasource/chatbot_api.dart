@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
-import 'package:chat_bot/core/handler/api_error_handler.dart';
 import 'package:chat_bot/core/network/api_endpoints.dart';
+import 'package:chat_bot/features/chat_bot/domain/entities/message.dart';
 import 'package:dio/dio.dart';
 
 class ChatbotApi {
@@ -9,46 +9,50 @@ class ChatbotApi {
 
   const ChatbotApi(this.dio);
 
-  Future<String> call(String? message, List<String>? imagePaths) async {
+  Future<String> call({
+    required List<Message> history,
+    List<String>? imagePaths,
+  }) async {
     try {
-      if ((message == null || message.isEmpty) &&
-          (imagePaths == null || imagePaths.isEmpty)) {
-        throw Exception("Empty request");
+      if (history.isEmpty) {
+        throw Exception("History cannot be empty");
       }
 
-      List<Map<String, dynamic>> requestParts = [];
+      final contents = <Map<String, dynamic>>[];
 
-      if (message != null && message.isNotEmpty) {
-        requestParts.add({"text": message});
-      }
+      for (int i = 0; i < history.length; i++) {
+        final msg = history[i];
 
-      if (imagePaths != null && imagePaths.length > 5) {
-        throw Exception("Max 5 images allowed");
-      }
+        List<Map<String, dynamic>> parts = [];
 
-      if (imagePaths != null && imagePaths.isNotEmpty) {
-        final imageParts = await Future.wait(
-          imagePaths.map((path) async {
-            final file = File(path);
+        // Text
+        if (msg.text.isNotEmpty) {
+          parts.add({"text": msg.text});
+        }
 
-            final size = await file.length();
-            if (size > 5 * 1024 * 1024) {
-              throw Exception("Image too large (max 5MB)");
-            }
+        // Images ONLY for latest user message
+        if (i == history.length - 1 &&
+            msg.isUser &&
+            imagePaths != null &&
+            imagePaths.isNotEmpty) {
+          final imageParts = await Future.wait(
+            imagePaths.map((path) async {
+              final file = File(path);
+              final bytes = await file.readAsBytes();
 
-            final bytes = await file.readAsBytes();
-            final base64Image = base64Encode(bytes);
+              return {
+                "inline_data": {
+                  "mime_type": _getMimeType(path),
+                  "data": base64Encode(bytes),
+                },
+              };
+            }),
+          );
 
-            return {
-              "inline_data": {
-                "mime_type": _getMimeType(path),
-                "data": base64Image,
-              },
-            };
-          }),
-        );
+          parts.addAll(imageParts);
+        }
 
-        requestParts.addAll(imageParts);
+        contents.add({"role": msg.isUser ? "user" : "model", "parts": parts});
       }
 
       final response = await dio
@@ -63,10 +67,7 @@ class ChatbotApi {
                   },
                 ],
               },
-
-              "contents": [
-                {"role": "user", "parts": requestParts},
-              ],
+              "contents": contents,
             },
             options: Options(headers: {"Content-Type": "application/json"}),
           )
@@ -92,10 +93,8 @@ class ChatbotApi {
       }
 
       return text;
-    } on DioException catch (e) {
-      throw Exception("API Error: ${e.response?.data ?? e.message}");
     } catch (e) {
-      return ApiErrorHandler.getMessage(e);
+      throw Exception(e.toString());
     }
   }
 

@@ -1,6 +1,6 @@
 import 'dart:io';
 
-import 'package:chat_bot/features/chat_bot/data/model/message.dart';
+import 'package:chat_bot/features/chat_bot/domain/entities/message.dart';
 import 'package:chat_bot/features/chat_bot/presentation/widget/bot_message.dart';
 import 'package:flutter/material.dart';
 import 'package:gpt_markdown/gpt_markdown.dart';
@@ -28,17 +28,16 @@ class UserMessage extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-
-              if (msg.imagePaths != null && msg.imagePaths!.isNotEmpty)
+              if (msg.imageUrls != null && msg.imageUrls!.isNotEmpty)
                 Wrap(
                   spacing: 6,
                   runSpacing: 6,
-                  children: msg.imagePaths!.map((path) {
+                  children: msg.imageUrls!.map((path) {
                     return ClipRRect(
                       borderRadius: BorderRadius.circular(10),
                       child: Image.file(
                         File(path),
-                        width: 60, 
+                        width: 60,
                         height: 60,
                         fit: BoxFit.cover,
                       ),
@@ -46,8 +45,8 @@ class UserMessage extends StatelessWidget {
                   }).toList(),
                 ),
 
-              if (msg.imagePaths != null &&
-                  msg.imagePaths!.isNotEmpty &&
+              if (msg.imageUrls != null &&
+                  msg.imageUrls!.isNotEmpty &&
                   msg.text.isNotEmpty)
                 const SizedBox(height: 8),
 
