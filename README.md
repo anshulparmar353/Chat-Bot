@@ -1,16 +1,43 @@
 # 🤖 Chat Bot (Flutter)
 
-An AI-powered chat application built using **Flutter + BLoC + Clean Architecture**, designed to deliver a ChatGPT-like experience with a scalable architecture for future enhancements.
-
+> 🚀 A production-ready ChatGPT-like AI chat app built with Flutter, Firebase, and Clean Architecture.
 ---
 
 ## 🚀 Features
 
 ### 💬 AI Chat
 
-* Real-time chat with AI (Gemini API)
+* Real-time AI chat (Gemini API)
+* Context-aware conversation (multi-turn memory)
+* ChatGPT-like typing animation (character streaming)
 * Markdown-supported responses (code blocks, headings, formatted text)
-* Clean and responsive chat UI inspired by ChatGPT
+
+---
+
+### 📚 Chat History (NEW)
+
+* Multiple chat sessions (like ChatGPT)
+* Switch between conversations
+* Chat history stored in Firebase Firestore
+* Auto-generated conversation titles
+
+---
+
+### 🔐 Authentication (NEW)
+
+* Firebase Anonymous Authentication
+* User-based chat history
+
+---
+
+### ⚠️ Smart Error Handling (NEW)
+
+* Errors shown as bot messages inside chat
+* Handles:
+  * No internet
+  * Timeout
+  * Server errors
+  * API failures
 
 ### ⚡ Performance & UX
 
@@ -27,11 +54,11 @@ This project follows **Clean Architecture** principles to ensure scalability and
 ```text
 Presentation (UI + BLoC)
         ↓
-Domain (Entities + UseCases)
+Domain (Entities + Repositories)
         ↓
 Data (Repository + DataSources)
         ↓
-Remote API (Dio)
+Remote API (Dio) + Firebase (Firestore + Auth)
 ```
 
 ### 🔹 Tech Stack
@@ -75,6 +102,25 @@ lib/
 └── main.dart
 ```
 
+## 🧠 How It Works
+
+1. User sends a message  
+2. Message is stored in Firebase (Firestore)  
+3. Full conversation history is sent to AI (Gemini API)  
+4. AI generates a context-aware response  
+5. Response is streamed with typing animation  
+6. Messages are saved for future conversations  
+
+---
+
+## 🔮 Future Improvements
+
+* 🔁 Retry failed messages
+* 📡 Real-time streaming (API-level streaming)
+* 🌐 Offline support
+* 🔍 Chat search & filtering
+* 🧠 AI-generated smart titles
+
 ---
 
 ## ⚙️ Getting Started
@@ -109,49 +155,6 @@ This project uses an AI API (e.g., Gemini).
 ```text
 core/network/api_endpoints.dart
 ```
-
-⚠️ **Important:** Never commit API keys to public repositories.
-
----
-
-## ⚠️ Current Limitations
-
-* ❌ No chat history (conversations are not persisted)
-* ❌ No user authentication
-* ❌ No offline support
-* ❌ No multi-device sync
-
----
-
-## 🔮 Planned Features
-
-### 🧠 Chat History (Upcoming)
-
-* Conversation-based chat system
-* Persistent chat storage
-* Ability to switch between chats
-
-### ☁️ Backend Integration
-
-Planned integration with:
-
-* Firebase
-
-Using:
-
-* Firebase Authentication → user-based chats
-* Cloud Firestore → store conversations
-* Firebase Storage (optional) → media support
-
-### 🚀 Future Enhancements
-
-* 🔄 Real-time chat sync across devices
-* 🧠 Context-aware conversations (multi-turn memory)
-* 🔍 Chat search & filtering
-* 🖼️ Image/file support
-* ⚡ Streaming response (typing effect)
-
----
 
 ## 📸 UI Highlights
 
