@@ -28,11 +28,11 @@ class UserMessage extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              if (msg.imageUrls != null && msg.imageUrls!.isNotEmpty)
+              if (msg.imagePaths != null && msg.imagePaths!.isNotEmpty)
                 Wrap(
                   spacing: 6,
                   runSpacing: 6,
-                  children: msg.imageUrls!.map((path) {
+                  children: msg.imagePaths!.map((path) {
                     return ClipRRect(
                       borderRadius: BorderRadius.circular(10),
                       child: Image.file(
@@ -45,8 +45,8 @@ class UserMessage extends StatelessWidget {
                   }).toList(),
                 ),
 
-              if (msg.imageUrls != null &&
-                  msg.imageUrls!.isNotEmpty &&
+              if (msg.imagePaths != null &&
+                  msg.imagePaths!.isNotEmpty &&
                   msg.text.isNotEmpty)
                 const SizedBox(height: 8),
 
@@ -60,7 +60,7 @@ class UserMessage extends StatelessWidget {
         ),
       );
     } else {
-      return BotMessage(msg: msg);
+      return BotMessage(msg: msg);  
     }
   }
 }

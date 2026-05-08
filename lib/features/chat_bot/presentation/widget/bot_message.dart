@@ -3,28 +3,10 @@ import 'package:chat_bot/features/chat_bot/presentation/widget/code_block_builde
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 
-class BotMessage extends StatefulWidget {
+class BotMessage extends StatelessWidget {
   const BotMessage({super.key, required this.msg});
 
   final Message msg;
-
-  @override
-  State<BotMessage> createState() => _BotMessageState();
-}
-
-class _BotMessageState extends State<BotMessage> {
-  bool useMarkdown = false; 
-
-  @override
-  void didUpdateWidget(covariant BotMessage oldWidget) {
-    super.didUpdateWidget(oldWidget);
-
-    final formatted = _formatText(widget.msg.text);
-
-    if (!useMarkdown && _isMarkdownStable(formatted)) {
-      useMarkdown = true;
-    }
-  }
 
   String _formatText(String text) {
     text = text.replaceAllMapped(
@@ -35,89 +17,79 @@ class _BotMessageState extends State<BotMessage> {
     return text.replaceAll('! ?', '!?');
   }
 
-  bool _isMarkdownStable(String text) {
-    final t = text.trim();
-
-    if (t.isEmpty) return false;
-
-    if (t.contains('```') && t.split('```').length.isOdd) return false;
-
-    final lastLine = t.split('\n').last;
-    if (RegExp(r'^(#{1,6})\s*$').hasMatch(lastLine)) return false;
-
-    if (RegExp(r'(\*|_)$').hasMatch(t)) return false;
-
-    return true;
-  }
-
   @override
   Widget build(BuildContext context) {
-    final formatted = _formatText(widget.msg.text);
+    final formatted = _formatText(msg.text);
 
-    return TweenAnimationBuilder<double>(
-      duration: const Duration(milliseconds: 150),
-      tween: Tween(begin: 0.95, end: 1),
-      builder: (context, value, child) {
-        return Opacity(
-          opacity: value,
-          child: Transform.translate(
-            offset: Offset(0, 10 * (1 - value)),
-            child: child,
-          ),
-        );
-      },
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        color: Colors.black,
-        child: _buildMessage(formatted),
-      ),
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      color: Colors.black,
+      child: _buildMessage(formatted),
     );
   }
 
   Widget _buildMessage(String formatted) {
-    if (!useMarkdown) {
+
+    if (msg.isStreaming) {
       return Text(
-        formatted,
-        style: const TextStyle(color: Colors.white, fontSize: 15, height: 1.7),
+        _plainText(formatted),
+        style: const TextStyle(color: Colors.white, fontSize: 16, height: 1.55),
       );
     }
 
-    try {
-      return MarkdownBody(
-        data: formatted,
-        selectable: true,
-        builders: {'pre': CodeBlockBuilder()},
-        styleSheet: _styleSheet(),
-      );
-    } catch (_) {
-      return Text(formatted, style: const TextStyle(color: Colors.white));
-    }
+    return MarkdownBody(
+      data: formatted,
+      selectable: true,
+      shrinkWrap: true,
+      softLineBreak: true,
+      builders: {'pre': CodeBlockBuilder()},
+      styleSheet: _styleSheet(),
+    );
   }
 
   MarkdownStyleSheet _styleSheet() {
     return MarkdownStyleSheet(
       h1: const TextStyle(
         color: Colors.white,
-        fontSize: 26,
+        fontSize: 24,
         fontWeight: FontWeight.bold,
+        height: 1.3,
       ),
+
       h2: const TextStyle(
         color: Colors.white,
-        fontSize: 22,
+        fontSize: 20,
         fontWeight: FontWeight.bold,
+        height: 1.3,
       ),
+
       h3: const TextStyle(
         color: Colors.white,
         fontSize: 18,
         fontWeight: FontWeight.w700,
+        height: 1.3,
       ),
-      p: const TextStyle(color: Colors.white, fontSize: 15, height: 1.8),
-      strong: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800),
+
+      p: const TextStyle(color: Colors.white, fontSize: 15, height: 1.45),
+
+      strong: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
+
       em: const TextStyle(color: Colors.white70, fontStyle: FontStyle.italic),
-      listBullet: const TextStyle(color: Colors.white),
-      listIndent: 24,
-      blockSpacing: 10,
+
+      listBullet: const TextStyle(color: Colors.white, height: 1.35),
+
+      blockSpacing: 5,
+      listIndent: 20,
     );
+  }
+
+  String _plainText(String text) {
+    return text
+        .replaceAll(RegExp(r'#{1,6}\s*'), '')
+        .replaceAll('**', '')
+        .replaceAll('*', '')
+        .replaceAll('---', '')
+        .replaceAll('`', '');
   }
 }

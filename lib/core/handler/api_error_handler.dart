@@ -39,6 +39,8 @@ class ApiErrorHandler {
         return "Authentication failed. Check API key.";
       case 404:
         return "Requested resource not found.";
+      case 429:
+        return "Too many requests. Please wait a few seconds and try again.";
       case 500:
       case 502:
       case 503:

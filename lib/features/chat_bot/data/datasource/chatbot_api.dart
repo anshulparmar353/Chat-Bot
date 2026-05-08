@@ -23,14 +23,12 @@ class ChatbotApi {
       for (int i = 0; i < history.length; i++) {
         final msg = history[i];
 
-        List<Map<String, dynamic>> parts = [];
+        final parts = <Map<String, dynamic>>[];
 
-        // Text
-        if (msg.text.isNotEmpty) {
-          parts.add({"text": msg.text});
+        if (msg.text.trim().isNotEmpty) {
+          parts.add({"text": msg.text.trim()});
         }
 
-        // Images ONLY for latest user message
         if (i == history.length - 1 &&
             msg.isUser &&
             imagePaths != null &&
@@ -38,11 +36,12 @@ class ChatbotApi {
           final imageParts = await Future.wait(
             imagePaths.map((path) async {
               final file = File(path);
+
               final bytes = await file.readAsBytes();
 
               return {
-                "inline_data": {
-                  "mime_type": _getMimeType(path),
+                "inlineData": {
+                  "mimeType": _getMimeType(path),
                   "data": base64Encode(bytes),
                 },
               };
@@ -51,6 +50,8 @@ class ChatbotApi {
 
           parts.addAll(imageParts);
         }
+
+        if (parts.isEmpty) continue;
 
         contents.add({"role": msg.isUser ? "user" : "model", "parts": parts});
       }
@@ -75,25 +76,64 @@ class ChatbotApi {
 
       final data = response.data;
 
-      final candidates = data?["candidates"] as List?;
+      print("API RESPONSE: $data");
+
+      final candidates = data["candidates"];
+
       if (candidates == null || candidates.isEmpty) {
-        throw Exception("No candidates in response");
+        throw Exception("No response generated");
       }
 
-      final content = candidates.first["content"];
-      final responseParts = (content?["parts"] as List?) ?? [];
+      final parts = candidates[0]?["content"]?["parts"] as List<dynamic>?;
 
-      final text = responseParts
-          .where((p) => p is Map && p["text"] != null)
-          .map((p) => p["text"] as String)
+      if (parts == null || parts.isEmpty) {
+        throw Exception("Empty response parts");
+      }
+
+      final text = parts
+          .where((e) => e["text"] != null)
+          .map((e) => e["text"].toString())
           .join();
 
-      if (text.isEmpty) {
-        throw Exception("Empty response text");
+      if (text.trim().isEmpty) {
+        throw Exception("AI returned empty text");
       }
 
       return text;
+    } on DioException catch (e) {
+      print("DIO ERROR: ${e.response?.data}");
+
+      final statusCode = e.response?.statusCode;
+
+      if (statusCode == 429) {
+        final errorData = e.response?.data.toString() ?? "";
+
+        if (errorData.contains("quota")) {
+          throw Exception(
+            "Daily AI quota exceeded. Please try later or enable billing.",
+          );
+        }
+
+        throw Exception("Too many requests sent. Please wait a moment.");
+      }
+
+      if (statusCode == 401) {
+        throw Exception("Invalid API key.");
+      }
+
+      if (statusCode == 403) {
+        throw Exception("Access denied.");
+      }
+
+      if (statusCode == 500) {
+        throw Exception("Server error from AI API.");
+      }
+
+      throw Exception(e.response?.data.toString() ?? "Network request failed");
+    } on SocketException {
+      throw Exception("No internet connection");
     } catch (e) {
+      print("CHAT ERROR: $e");
       throw Exception(e.toString());
     }
   }

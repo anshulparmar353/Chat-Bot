@@ -103,12 +103,35 @@ class ChatRemoteDataSourceImpl implements ChatRemoteDatasource {
     required String userId,
     required String conversationId,
   }) async {
-    final messages = await _messageRef(userId, conversationId).get();
+    final conversationRef = firestore
+        .collection('users')
+        .doc(userId)
+        .collection('conversations')
+        .doc(conversationId);
 
-    for (var doc in messages.docs) {
+    final messages = await conversationRef.collection('messages').get();
+
+    for (final doc in messages.docs) {
       await doc.reference.delete();
     }
 
-    await _conversationRef(userId).doc(conversationId).delete();
+    await conversationRef.delete();
+  }
+
+  @override
+  Future<void> renameConversation({
+    required String userId,
+    required String conversationId,
+    required String newTitle,
+  }) async {
+    await firestore
+        .collection('users')
+        .doc(userId)
+        .collection('conversations')
+        .doc(conversationId)
+        .update({
+          'title': newTitle,
+          'updatedAt': Timestamp.fromDate(DateTime.now()),
+        });
   }
 }

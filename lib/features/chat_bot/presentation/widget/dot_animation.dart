@@ -9,9 +9,13 @@ class DotAnimation extends StatefulWidget {
   State<DotAnimation> createState() => _DotState();
 }
 
-class _DotState extends State<DotAnimation> with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _animation;
+class _DotState extends State<DotAnimation>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+
+  late final Animation<double> _animation;
+
+  bool _disposed = false;
 
   @override
   void initState() {
@@ -22,25 +26,42 @@ class _DotState extends State<DotAnimation> with SingleTickerProviderStateMixin 
       duration: const Duration(milliseconds: 600),
     );
 
-    _animation = Tween<double>(begin: 0, end: -8).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
-    );
+    _animation = Tween<double>(
+      begin: 0,
+      end: -8,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
 
     _startAnimation();
   }
 
-  void _startAnimation() async {
+  Future<void> _startAnimation() async {
     await Future.delayed(Duration(milliseconds: widget.delay));
 
-    while (mounted) {
-      await _controller.forward();
-      await _controller.reverse();
+    if (!mounted || _disposed) return;
+
+    while (mounted && !_disposed) {
+      try {
+        await _controller.forward();
+
+        if (!mounted || _disposed) return;
+
+        await _controller.reverse();
+
+        if (!mounted || _disposed) return;
+      } catch (_) {
+        return;
+      }
     }
   }
 
   @override
   void dispose() {
+    _disposed = true;
+
+    _controller.stop();
+
     _controller.dispose();
+
     super.dispose();
   }
 

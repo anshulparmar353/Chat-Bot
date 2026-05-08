@@ -7,34 +7,62 @@ import 'package:chat_bot/features/chat_bot/presentation/widget/empty_state.dart'
 import 'package:chat_bot/features/chat_bot/presentation/widget/input_bar.dart';
 import 'package:chat_bot/features/chat_bot/presentation/widget/typing_indicator.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 class BotScreen extends StatefulWidget {
-  const BotScreen({super.key, required this.userId});
-
   final String userId;
+
+  const BotScreen({super.key, required this.userId});
 
   @override
   State<BotScreen> createState() => _BotScreenState();
 }
 
-class _BotScreenState extends State<BotScreen> {
+class _BotScreenState extends State<BotScreen> with WidgetsBindingObserver {
   final TextEditingController controller = TextEditingController();
-  final ScrollController _scrollController = ScrollController();
   final FocusNode focusNode = FocusNode();
+
+  final ScrollController _scrollController = ScrollController();
+
+  bool _isUserScrolling = false;
 
   @override
   void initState() {
     super.initState();
 
+    WidgetsBinding.instance.addObserver(this);
+
     context.read<BotBloc>().add(LoadConversationsEvent(widget.userId));
+    _scrollController.addListener(() {
+      final direction = _scrollController.position.userScrollDirection;
+
+      _isUserScrolling = direction != ScrollDirection.idle;
+    });
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+
     controller.dispose();
     focusNode.dispose();
+    _scrollController.dispose();
     super.dispose();
+  }
+
+  void _scrollToBottom() {
+    if (!_scrollController.hasClients) return;
+
+    if (_isUserScrolling) return;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!_scrollController.hasClients) return;
+
+      final position = _scrollController.position;
+
+      _scrollController.jumpTo(position.maxScrollExtent);
+    });
   }
 
   void _sendMessage(BuildContext context, String text, List<String> images) {
@@ -43,7 +71,11 @@ class _BotScreenState extends State<BotScreen> {
 
     if (state.conversationId == null) {
       bloc.add(
-        CreateConversationEvent(userId: widget.userId, firstMessage: text),
+        CreateConversationEvent(
+          userId: widget.userId,
+          firstMessage: text,
+          imagePaths: images,
+        ),
       );
     } else {
       bloc.add(
@@ -51,9 +83,11 @@ class _BotScreenState extends State<BotScreen> {
           userId: widget.userId,
           conversationId: state.conversationId!,
           text: text,
+          imagePaths: images,
         ),
       );
     }
+
     controller.clear();
     focusNode.requestFocus();
   }
@@ -62,7 +96,6 @@ class _BotScreenState extends State<BotScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.black,
-
       drawer: AppDrawer(userId: widget.userId),
 
       appBar: AppBar(
@@ -70,7 +103,7 @@ class _BotScreenState extends State<BotScreen> {
         elevation: 0,
         centerTitle: true,
         title: const Text("ChatBot", style: TextStyle(color: Colors.white)),
-        iconTheme: const IconThemeData(color: Colors.white),
+        iconTheme: IconThemeData(color: Colors.white),
       ),
 
       body: Column(
@@ -82,13 +115,7 @@ class _BotScreenState extends State<BotScreen> {
                 final isTyping = state.isTyping;
 
                 WidgetsBinding.instance.addPostFrameCallback((_) {
-                  if (_scrollController.hasClients) {
-                    _scrollController.animateTo(
-                      _scrollController.position.maxScrollExtent,
-                      duration: const Duration(milliseconds: 300),
-                      curve: Curves.easeOut,
-                    );
-                  }
+                  _scrollToBottom();
                 });
 
                 return SafeArea(
@@ -97,7 +124,8 @@ class _BotScreenState extends State<BotScreen> {
                     child: Column(
                       children: [
                         Expanded(
-                          child: messages.isEmpty && !isTyping
+                          child:
+                              messages.isEmpty && !isTyping && !state.isLoading
                               ? EmptyState(
                                   onExampleTap: (text) {
                                     _sendMessage(context, text, []);
@@ -105,6 +133,14 @@ class _BotScreenState extends State<BotScreen> {
                                 )
                               : ListView.builder(
                                   controller: _scrollController,
+                                  physics: const BouncingScrollPhysics(),
+                                  cacheExtent: 300,
+                                  itemExtent: null,
+                                  addAutomaticKeepAlives: false,
+                                  keyboardDismissBehavior:
+                                      ScrollViewKeyboardDismissBehavior.onDrag,
+                                  addSemanticIndexes: false,
+                                  addRepaintBoundaries: true,
                                   padding: const EdgeInsets.symmetric(
                                     vertical: 10,
                                   ),
@@ -116,7 +152,10 @@ class _BotScreenState extends State<BotScreen> {
                                     }
 
                                     final msg = messages[index];
-                                    return UserMessage(msg: msg);
+
+                                    return RepaintBoundary(
+                                      child: UserMessage(msg: msg),
+                                    );
                                   },
                                 ),
                         ),

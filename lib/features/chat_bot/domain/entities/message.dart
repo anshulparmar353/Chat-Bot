@@ -1,14 +1,16 @@
 class Message {
   final String id;
   final String text;
-  final List<String>? imageUrls; 
+  final List<String>? imagePaths;
   final bool isUser;
   final DateTime createdAt;
+  final bool isStreaming;
 
   const Message({
     required this.id,
     required this.text,
-    this.imageUrls,
+    this.imagePaths,
+    this.isStreaming = false,
     required this.isUser,
     required this.createdAt,
   });
@@ -16,15 +18,17 @@ class Message {
   Message copyWith({
     String? id,
     String? text,
-    List<String>? imageUrls,
+    List<String>? imagePaths,
     bool? isUser,
     DateTime? createdAt,
+    bool? isStreaming,
   }) {
     return Message(
       id: id ?? this.id,
       text: text ?? this.text,
-      imageUrls: imageUrls ?? this.imageUrls,
+      imagePaths: imagePaths ?? this.imagePaths,
       isUser: isUser ?? this.isUser,
+      isStreaming: isStreaming ?? this.isStreaming,
       createdAt: createdAt ?? this.createdAt,
     );
   }

@@ -30,4 +30,10 @@ abstract class ChatRemoteDatasource {
     required String userId,
     required String conversationId,
   });
+
+  Future<void> renameConversation({
+    required String userId,
+    required String conversationId,
+    required String newTitle,
+  });
 }

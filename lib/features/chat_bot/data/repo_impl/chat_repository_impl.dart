@@ -76,4 +76,17 @@ class ChatRepositoryImpl implements ChatRepository {
       conversationId: conversationId,
     );
   }
+
+  @override
+  Future<void> renameConversation({
+    required String userId,
+    required String conversationId,
+    required String newTitle,
+  }) {
+    return remote.renameConversation(
+      userId: userId,
+      conversationId: conversationId,
+      newTitle: newTitle,
+    );
+  }
 }
